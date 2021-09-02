@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>RepliDA</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
+        crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.21.1/axios.min.js"
+        integrity="sha512-bZS47S7sPOxkjU/4Bt0zrhEtWx0y0CRkhEp8IckzK+ltifIIE9EMIMTuT/mEzoIMewUINruDBIR/jJnbguonqQ=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", async () => {
+            setInterval(async () => {
+                if (!window.vmid) return;
+
+                const resp = await axios.get(`/vmStatus?time=${Date.now()}`);
+                const isVmAlive = resp.data;
+                if (isVmAlive) {
+                    document.getElementById("light").setAttribute("fill", "green");
+                    window.isStarted = true;
+                    document.getElementById("submit").disabled = true;
+                } else {
+                    document.getElementById("light").setAttribute("fill", "red");
+                    document.getElementById("submit").disabled = false;
+                }
+            }, 2000);
+
+            (async () => {
+                const { vmid, isSerial } = (await axios.get("/vm")).data;
+                window.vmid = vmid;
+                window.isSerial = isSerial;
+                if (!window.vmid) {
+                    (async () => {
+                        const resp = await axios.get("/templates");
+                        const data = resp.data;
+                        for (const template of data) {
+                            const content = document.getElementById('dropdownItemT').content;
+                            const node = document.importNode(content, true);
+
+                            const a = node.querySelector("a");
+                            a.innerText = template;
+                            a.addEventListener("click", async e => {
+                                e.preventDefault();
+
+                                window.vmid = (await axios.post("/vm", { template })).data;
+                                document.getElementById("reloadConsole").click();
+                            })
+                            document.getElementById("dropdownMenu").append(node);
+                        }
+                    })();
+                } else {
+                    document.getElementById("navbarNav").classList.add("hide");
+                    await axios.post("/token");
+                    document.getElementById("reloadConsole").click();
+                }
+            })()
+
+            document.querySelectorAll("button.vm.operation").forEach(button => {
+                button.addEventListener("click", async e => {
+                    const operation = e.target.getAttribute("data-operation");
+                    await axios.post("/vm/operation", { operation });
+                    document.getElementById("reloadConsole").click();
+                    if (e.target.getAttribute("data-reload")) document.getElementById("reloadConsole").click();
+                })
+            })
+
+            document.getElementById("submit").addEventListener("click", async e => {
+                await axios.post("/submit");
+                window.location.reload();
+            })
+
+            document.getElementById("reloadConsole").addEventListener("click", () => {
+                document.getElementById("app").src = (window.isSerial ? "/console/xterm" : "/console/vnc") + `?${Date.now()}`;
+            })
+        })
+    </script>
+    <style>
+        #app {
+            height: 85vh;
+            width: 100%;
+        }
+
+        .hide {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container-fluid">
+            <div>
+                <img>
+                <svg xmlns="http://www.w3.org/2000/svg" width="45" height="45" fill="red" viewBox="0 0 16 16"
+                    id="light">
+                    <path d="M8 9.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z" />
+                </svg></img>
+                <a class="navbar-brand" href="#">RepliDA</a>
+            </div>
+            <div class="d-grid gap-2 justify-content-end">
+                <div class="row">
+                    <div class="col" id="navbarNav">
+                        <ul class="navbar-nav">
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
+                                    data-bs-toggle="dropdown" aria-expanded="false">
+                                    Template
+                                </a>
+                                <ul class="dropdown-menu" id="dropdownMenu" aria-labelledby="navbarDropdown">
+                                    <template id="dropdownItemT">
+                                        <li><a class="dropdown-item" href="#">Action</a></li>
+                                    </template>
+                                </ul>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="col-md-auto">
+                        <button type="button" class="btn btn-outline-danger vm operation"
+                            data-operation="stop">強制關機</button>
+                        <button type="button" class="btn btn-outline-danger vm operation"
+                            data-operation="shutdown">關機</button>
+                        <button type="button" class="btn btn-outline-success vm operation"
+                            data-operation="start" data-reload="1">開機</button>
+                        <button type="button" class="btn btn-outline-warning vm operation"
+                            data-operation="reboot" data-reload="1">重新啟動</button>
+                        <button type="button" class="btn btn-outline-dark" id="reloadConsole">重整 Console</button>
+                        <button type="button" class="btn btn-outline-primary" id="submit" disabled>送出</button>
+                        <button type="button" class="btn btn-outline-secondary" id="contactAdmin">聯絡管理員</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+    <br>
+    <div class="container-fluid" id="appP">
+        <iframe id="app"></iframe>
+    </div>
+</body>
+
+</html>

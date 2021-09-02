@@ -1,0 +1,5 @@
+node_modules
+sessions
+ca.cer
+data/db.json
+data/config.js
