@@ -12,5 +12,7 @@ module.exports = {
         "baseVmid": 1069000 // base vmid for the new VM
     },
     "port": 3010, // port for the web server
-    "sessionSecret": "test123" // secret for the session cookie
+    "sessionSecret": "test123", // secret for the session cookie
+    "loginUrl": "YOUR_LOGIN_MODULE_ENDPOINT", // url for the login page, see RepliDA's login modules.
+    "callbackJwtSecret": ""
 }

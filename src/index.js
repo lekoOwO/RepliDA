@@ -27,6 +27,11 @@ const reqLogin = (req, res, next) => {
     else res.redirect("/login")
 }
 
+const reqAdmin = (req, res, next) => {
+    if (req.session.isAdmin) next()
+    else return res.sendStatus(403)
+}
+
 const app = express()
 app.use(express.json())
 app.use(express.urlencoded())
@@ -34,6 +39,30 @@ app.use(express.urlencoded())
 const sessionMiddleware = session(sessionConfig);
 app.use(sessionMiddleware);
 
+/* ----- Login ----- */
+app.get("/login", async(req, res) => {
+    const token = req.body.token;
+    try {
+        const {email, isAdmin} = await utils.verifyLogin(token);
+        const username = utils.sanitizeUsername(email);
+        req.session.username = username;
+        req.session.isAdmin = isAdmin;
+
+        const user = db.getUser(email);
+        if (!user) {
+            const pveUsername = "RepliDA-" + username + "@pve";
+            const pvePassword = utils.generatePassword();
+            await proxmoxApi.addUser(pveUsername, pvePassword);
+            await db.setUser(username, pveUsername, pvePassword);
+        }
+        res.redirect(isAdmin ? "/admin" : "/");
+    } catch (e){
+        return res.sendStatus(403);
+    }
+})
+/* ----- Login END ----- */
+
+/* ----- Console ----- */
 app.use("/novnc", express.static(__dirname + '/public/noVNC'))
 app.use("/xterm", express.static(__dirname + '/public/xterm'))
 
@@ -56,27 +85,64 @@ app.get("/console/xterm", reqLogin, async (req, res) => {
     res.redirect(link);
 })
 
+app.post("/token", reqLogin, async (req, res) => {
+    const { CSRFPreventionToken, ticket } = await proxmoxApi.login(req.session.username);
+    const pveCookie = "PVEAuthCookie=" + ticket;
+    req.session.CSRFPreventionToken = CSRFPreventionToken;
+    req.session.pveCookie = pveCookie;
+    res.json(await utils.encJwt({ pveCookie, CSRFPreventionToken }));
+})
+
+function setProxyAuth(proxyReq, req) {
+    if (!req.session) return console.log(':(')
+    if (req.session.pveTicket) {
+        proxyReq.setHeader('authorization', req.session.pveTicket);
+    } else if (req.session.pveCookie) {
+        proxyReq.setHeader('cookie', req.session.pveCookie);
+        if (req.session.CSRFPreventionToken) {
+            proxyReq.setHeader('CSRFPreventionToken', req.session.CSRFPreventionToken);
+        }
+    }
+}
+
+const apiProxy = createProxyMiddleware({
+    target: `https://${config.main.host}:${config.main.port}`,
+    ws: true,
+    secure: false,
+    changeOrigin: true,
+    onProxyReq(proxyReq, req, res) {
+        setProxyAuth(proxyReq, req)
+    },
+    onProxyReqWs(proxyReq, req, socket, options, head) {
+        const token = utils.getTokenFromURL(req.url);
+        if (token && !req.session) {
+            const { pveCookie, CSRFPreventionToken } = utils.decJwt(token);
+            req.session = { pveCookie, CSRFPreventionToken };
+        }
+        proxyReq.path = proxyReq.path.split("&token")[0]; // remove token from url, tricky
+        setProxyAuth(proxyReq, req);
+    }
+})
+
+// Becuz I'm lazy to deal with the url part
+// since the api always starts with `/api2`
+// I make `/api2` a proxy to main proxmox api.
+app.use('/api2', (...args) => {
+    try {
+        apiProxy(...args)
+    } catch (e) {
+        console.error(e);
+    }
+})
+/* ----- Console END ----- */
+
+/* ----- Main ----- */
 app.get("/", reqLogin, (req, res) => {
     res.sendFile(__dirname + '/public/app/index.html')
 })
 
 app.get("/templates", (req, res) => {
     return res.json(Object.keys(config.main.templates));
-})
-
-app.get("/login", async (req, res) => {
-    const username = "test"
-
-    req.session.username = username;
-    const user = db.getUser(username);
-    if (!user) {
-        const pveUsername = "RepliDA-" + utils.generatePassword() + "@pve";
-        const pvePassword = utils.generatePassword();
-        await proxmoxApi.addUser(pveUsername, pvePassword);
-        await db.setUser(username, pveUsername, pvePassword);
-    }
-
-    res.redirect("/");
 })
 
 app.get("/vmStatus", reqLogin, async (req, res) => {
@@ -192,54 +258,9 @@ app.post("/submit", reqLogin, async (req, res) => {
         upid: dumpUpid
     });
 })
+/* ----- Main END ----- */
 
-app.post("/token", reqLogin, async (req, res) => {
-    const { CSRFPreventionToken, ticket } = await proxmoxApi.login(req.session.username);
-    const pveCookie = "PVEAuthCookie=" + ticket;
-    req.session.CSRFPreventionToken = CSRFPreventionToken;
-    req.session.pveCookie = pveCookie;
-    res.json(await utils.encJwt({ pveCookie, CSRFPreventionToken }));
-})
+/* ----- Admin ----- */
 
-function setProxyAuth(proxyReq, req) {
-    if (!req.session) return console.log(':(')
-    if (req.session.pveTicket) {
-        proxyReq.setHeader('authorization', req.session.pveTicket);
-    } else if (req.session.pveCookie) {
-        proxyReq.setHeader('cookie', req.session.pveCookie);
-        if (req.session.CSRFPreventionToken) {
-            proxyReq.setHeader('CSRFPreventionToken', req.session.CSRFPreventionToken);
-        }
-    }
-}
-
-const apiProxy = createProxyMiddleware({
-    target: `https://${config.main.host}:${config.main.port}`,
-    ws: true,
-    secure: false,
-    changeOrigin: true,
-    onProxyReq(proxyReq, req, res) {
-        setProxyAuth(proxyReq, req)
-    },
-    onProxyReqWs(proxyReq, req, socket, options, head) {
-        const token = utils.getTokenFromURL(req.url);
-        if (token && !req.session) {
-            const { pveCookie, CSRFPreventionToken } = utils.decJwt(token);
-            req.session = { pveCookie, CSRFPreventionToken };
-        }
-        proxyReq.path = proxyReq.path.split("&token")[0]; // remove token from url, tricky
-        setProxyAuth(proxyReq, req);
-    }
-})
-
-// Becuz I'm lazy to deal with the url part
-// since the api always starts with `/api2`
-// I make `/api2` a proxy to main proxmox api.
-app.use('/api2', (...args) => {
-    try {
-        apiProxy(...args)
-    } catch (e) {
-        console.error(e);
-    }
-})
+/* ----- Admin END ----- */
 app.listen(config.port);

@@ -1,6 +1,7 @@
 const crypto = require('crypto')
 const qs = require('querystring')
 const jwt = require('jsonwebtoken');
+const base62 = require("base62/lib/ascii");
 
 const proxmoxApi = require("./proxmoxApi")
 const config = require("../data/config")
@@ -63,6 +64,15 @@ function decJwt(token) {
     return data.data;
 }
 
+function verifyLogin(token){
+    return new Promise((resolve, reject) => {
+        jwt.verify(token, config.callbackJwtSecret, function(err, decoded) {
+            if (err) reject(err)
+            else resolve(decoded.data);
+        });
+    })
+}
+
 function getTokenFromURL(URL) {
     return qs.parse(URL).token;
 }
@@ -70,7 +80,7 @@ function getTokenFromURL(URL) {
 function getDumpPathFromLog(logs){
     const log = logs.find(x => x.t.includes('.vma'))
     if (!log) return null;
-    
+
     const path = log.t.substring(
         log.t.indexOf("'") + 1, 
         log.t.lastIndexOf("'")
@@ -82,13 +92,19 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+function sanitizeUsername(username) {
+    return base62.encode(username)
+}
+
 module.exports = {
     generatePassword,
     getVncLink,
     getXtermLink,
     encJwt,
     decJwt,
+    verifyLogin,
     getTokenFromURL,
     getDumpPathFromLog,
-    sleep
+    sleep,
+    sanitizeUsername
 }

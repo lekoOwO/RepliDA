@@ -1,6 +1,7 @@
 lockfileVersion: 5.3
 
 specifiers:
+  base62: ^2.0.1
   better-sqlite3: ^7.4.3
   express: ^4.17.1
   express-session: ^1.17.2
@@ -12,6 +13,7 @@ specifiers:
   session-file-store: ^1.5.0
 
 dependencies:
+  base62: 2.0.1
   better-sqlite3: 7.4.3
   express: 4.17.1
   express-session: 1.17.2
@@ -80,6 +82,11 @@ packages:
 
   /bagpipe/0.3.5:
     resolution: {integrity: sha1-40HRZPyyTN8E6n4Ft2XsEMiupqE=}
+    dev: false
+
+  /base62/2.0.1:
+    resolution: {integrity: sha512-4t4WQK7mdbcWzqEBiq6tfo2qDCeIZGXvjifJZyxHIVcjQkZJxpFtu/pa2Va69OouCkg6izZ08hKnPxroeDyzew==}
+    engines: {node: '>=6.0.0'}
     dev: false
 
   /base64-js/1.5.1:
