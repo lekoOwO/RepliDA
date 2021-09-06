@@ -41,7 +41,11 @@ app.use(sessionMiddleware);
 
 /* ----- Login ----- */
 app.get("/login", async(req, res) => {
-    const token = req.body.token;
+    const token = req.params.token;
+    if (!token) {
+        return res.redirect(config.loginUrl);
+    }
+    
     try {
         const {email, isAdmin} = await utils.verifyLogin(token);
         const username = utils.sanitizeUsername(email);
