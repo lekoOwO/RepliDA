@@ -336,7 +336,7 @@ app.post("/admin/runScript", reqAdmin, async(req, res) => {
     const script = config.scripts[scriptName];
     const submitData = dbAdmin.getSubmitById(id);
 
-    // dbAdmin.readSubmit(id, admin);
+    dbAdmin.readSubmit(id, admin);
 
     const {logPath, errPath} = utils.generateLogPath(id);
     runScript.spawn({
