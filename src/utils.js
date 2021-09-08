@@ -1,7 +1,10 @@
 const crypto = require('crypto')
 const qs = require('querystring')
 const jwt = require('jsonwebtoken');
-const base62 = require("base62/lib/ascii");
+const Base62Str = require("base62str").default;
+const base62 = Base62Str.createInstance();
+const path = require('path');
+const fs = require('fs-extra');
 
 const proxmoxApi = require("./proxmoxApi")
 const config = require("../data/config")
@@ -67,8 +70,8 @@ function decJwt(token) {
 function verifyLogin(token){
     return new Promise((resolve, reject) => {
         jwt.verify(token, config.callbackJwtSecret, function(err, decoded) {
-            if (err) reject(err)
-            else resolve(decoded.data);
+            if (err) return reject(err)
+            resolve(decoded);
         });
     })
 }
@@ -93,7 +96,26 @@ function sleep(ms) {
 }
 
 function sanitizeUsername(username) {
-    return base62.encode(username)
+    return base62.encodeStr(username)
+}
+
+function decodeUsername(username) {
+    return base62.decodeStr(username)
+}
+
+function generateLogPath(id){
+    const randomPrefix = generatePassword(7);
+
+    const logPath = path.join(config.logDir, `${id}.${randomPrefix}.log`);
+    const errPath = path.join(config.logDir, `${id}.${randomPrefix}.err`);
+
+    return {logPath, errPath}
+}
+
+async function readLogs(logPath, errPath){
+    const log = await fs.readFile(logPath, 'utf8');
+    const err = await fs.readFile(errPath, 'utf8');
+    return {log, err};
 }
 
 module.exports = {
@@ -106,5 +128,8 @@ module.exports = {
     getTokenFromURL,
     getDumpPathFromLog,
     sleep,
-    sanitizeUsername
+    sanitizeUsername,
+    decodeUsername,
+    generateLogPath,
+    readLogs
 }

@@ -63,7 +63,7 @@ function read(table) {
         const insert = db.transaction(() => {
             db.prepare(`UPDATE SUBMITS SET read = 1 WHERE id = ?`).run(id);
             db.prepare(`
-                INSERT INTO ADMIN_LOG (user, action, table, target_id, time)
+                INSERT INTO ADMIN_LOG (user, action, \`table\`, target_id, time)
                 VALUES (@user, @action, @table, @targetId, @time)
             `).run({
                 user: admin,
@@ -80,9 +80,68 @@ function read(table) {
 const readSubmit = read("SUBMITS");
 const readError = read("ERRORS");
 
+function getSubmits() {
+    const select = db.prepare(`
+        SELECT *
+        FROM SUBMITS
+        WHERE read = 0
+    `);
+    return select.all();
+}
+
+function getSubmitById(id) {
+    const select = db.prepare(`
+        SELECT *
+        FROM SUBMITS
+        WHERE id = ?
+    `);
+    return select.get(id);
+}
+
+function getErrors() {
+    const select = db.prepare(`
+        SELECT *
+        FROM ERRORS
+        WHERE read = 0
+    `);
+    return select.all();
+}
+
+function getLogs(limit = 15) {
+    const select = db.prepare(`
+        SELECT *
+        FROM ADMIN_LOG
+        TOP LIMIT ?
+    `);
+    return select.all(limit);
+}
+
+function getStatistics(){
+    const select = db.prepare(`
+        SELECT 
+            COUNT(*) AS count, 
+            SUM(read) AS read,
+            COUNT(
+                CASE WHEN time > @time THEN 1 ELSE null END
+            ) AS diffCount,
+            SUM(
+                CASE WHEN time > @time THEN read ELSE 0 END
+            ) AS diffRead
+        FROM SUBMITS
+    `);
+    return select.get({
+        time: Date.now() - 1000 * 60 * 60 * 24 * 7
+    });
+}
+
 module.exports = {
     addSubmit,
     addError,
     readSubmit,
-    readError
+    readError,
+    getSubmits,
+    getErrors,
+    getLogs,
+    getSubmitById,
+    getStatistics
 }

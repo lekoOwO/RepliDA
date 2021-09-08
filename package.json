@@ -9,8 +9,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "base62": "^2.0.1",
+    "base62str": "^1.0.9",
     "better-sqlite3": "^7.4.3",
+    "dev-null": "^0.1.1",
     "express": "^4.17.1",
     "express-session": "^1.17.2",
     "fs-extra": "^10.0.0",

@@ -1,8 +1,9 @@
 lockfileVersion: 5.3
 
 specifiers:
-  base62: ^2.0.1
+  base62str: ^1.0.9
   better-sqlite3: ^7.4.3
+  dev-null: ^0.1.1
   express: ^4.17.1
   express-session: ^1.17.2
   fs-extra: ^10.0.0
@@ -13,8 +14,9 @@ specifiers:
   session-file-store: ^1.5.0
 
 dependencies:
-  base62: 2.0.1
+  base62str: 1.0.9
   better-sqlite3: 7.4.3
+  dev-null: 0.1.1
   express: 4.17.1
   express-session: 1.17.2
   fs-extra: 10.0.0
@@ -84,9 +86,8 @@ packages:
     resolution: {integrity: sha1-40HRZPyyTN8E6n4Ft2XsEMiupqE=}
     dev: false
 
-  /base62/2.0.1:
-    resolution: {integrity: sha512-4t4WQK7mdbcWzqEBiq6tfo2qDCeIZGXvjifJZyxHIVcjQkZJxpFtu/pa2Va69OouCkg6izZ08hKnPxroeDyzew==}
-    engines: {node: '>=6.0.0'}
+  /base62str/1.0.9:
+    resolution: {integrity: sha512-bnQ7cPnJZGAv+uMz8Qzbi3M3s4EVj7MEhN9FLmSPSJJd1XftnOuG0Ufx6C+L/Z1rHlfFhES4nZyzdNOlJFxxpg==}
     dev: false
 
   /base64-js/1.5.1:
@@ -247,6 +248,10 @@ packages:
     resolution: {integrity: sha1-+hN8S9aY7fVc1c0CrFWfkaTEups=}
     engines: {node: '>=0.10'}
     hasBin: true
+    dev: false
+
+  /dev-null/0.1.1:
+    resolution: {integrity: sha1-WiBc48Ky73e2I41roXnrdMag6Bg=}
     dev: false
 
   /ecdsa-sig-formatter/1.0.11:

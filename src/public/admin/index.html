@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <link href="https://cdn.rawgit.com/TeaMeow/TocasUI/2.3.2/dist/tocas.css" rel='stylesheet'>
+    <script src="https://cdn.rawgit.com/TeaMeow/TocasUI/2.3.2/dist/tocas.js"></script>
+    <title>Admin | RepliDA</title>
+    <style type="text/css">
+        html,
+        body {
+            height: 100%;
+        }
+
+        .pusher {
+            background-color: rgb(250, 250, 250);
+        }
+
+        .hide {
+            display: none !important;
+        }
+
+        .ts.header.link.button {
+            color: #404040
+        }
+
+        #log-container {
+            margin-top: 3px;
+        }
+    </style>
+    <script>
+        async function showLogs(){
+            const resp = await fetch("/admin/log");
+            const data = await resp.json();
+
+            document.getElementById("log-container").innerHTML = "";
+            for(const log of data){
+                const clone = document.getElementById("log-template").content.cloneNode(true);
+                switch(log.action){
+                    case "read":
+                    clone.querySelector("[name='title']").innerText = `處理提交 ${log.target_id}`;
+                }
+                clone.querySelector("[name='time']").innerText = new Date(log.time).toISOString();
+                clone.querySelector("[name='user']").innerText = log.user;
+                document.getElementById("log-container").appendChild(clone);
+            }
+        }
+
+        function showVmData(index = window.currentVmIndex + 1) {
+            if (index < 0) index = 0;
+            document.getElementById("latest-submitted-vm").innerHTML = "";
+            document.getElementById("prev-page-vm").disabled = index === 0;
+
+            for(let i = index; i < index + 5; i++){
+                if (i >= window.vmDatas.length) {
+                    document.getElementById("next-page-vm").disabled = true;
+                    break;
+                }
+                document.getElementById("next-page-vm").disabled = false;
+                const data = window.vmDatas[i];
+                const clone = document.getElementById("submit-vm-template").content.cloneNode(true);
+                clone.querySelector("[name='vmid']").innerText = data.vmid;
+                clone.querySelector("[name='submitter']").innerText = data.user;
+                clone.querySelector("[name='time']").innerText = new Date(data.time).toISOString();
+                
+                const scripts = clone.querySelector("[name='scripts']");
+                for(const script of window.scripts){
+                    const option = document.createElement("option");
+                    option.value = script;
+                    option.innerText = script;
+                    scripts.appendChild(option)
+                }
+
+                const row = clone.querySelector("[name='row']");
+                function postRead(){
+                    row.classList.add("disabled");
+
+                    window.vmDatas = window.vmDatas.filter(x => x.id !== data.id);
+                    window.currentVmIndex -= 1;
+                    document.getElementById("unread-vm-count").innerText = window.vmDatas.length;
+
+                    showLogs();
+                }
+
+                clone.querySelector("[name='approve']").addEventListener("click", async e => {
+                    const id = data.id;
+
+                    await fetch("/admin/runScript", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            id: id,
+                            script: scripts.value
+                        })
+                    });
+
+                    postRead()
+                })
+
+                clone.querySelector("[name='denial']").addEventListener("click", async e => {
+                    await fetch()
+
+                    postRead()
+                })
+
+                document.getElementById("latest-submitted-vm").appendChild(clone);
+
+                window.currentVmIndex = i;
+            }
+        }
+
+        async function showDialog(id, title){
+            const resp = await fetch(`/admin/scriptResult?id=${encodeURIComponent(id)}`);
+            const {log, err} = await resp.json();
+
+            const dialog = document.getElementById("dialog");
+            dialog.querySelector("[name='title']").innerText = title;
+            dialog.querySelector("[name='stdout']").innerText = log;
+            dialog.querySelector("[name='stderr']").innerText = err;
+
+            document.getElementById("stderr").onclick = () => {
+                dialog.querySelector("[name='stderr']").classList.remove("hide");
+                dialog.querySelector("[name='stdout']").classList.add("hide");
+            }
+            document.getElementById("stdout").onclick = () => {
+                dialog.querySelector("[name='stdout']").classList.remove("hide");
+                dialog.querySelector("[name='stderr']").classList.add("hide");
+            }
+
+            ts('#dialog').modal({
+                onApprove: () => false,
+                onDeny: () => false
+            }).modal("show");
+        }
+
+        document.addEventListener("DOMContentLoaded", async() => {
+            (async() => {
+                const resp = await fetch("/admin/me");
+                const {username, isAdmin, name, picture} = await resp.json();
+
+                document.getElementById("me-name").innerText = name;
+                document.getElementById("me-picture").src = picture;
+            })();
+
+            showLogs();
+
+            (async() => {
+                const resp = await fetch("/admin/submit");
+                window.vmDatas = await resp.json();
+                document.getElementById("unread-vm-count").innerText = window.vmDatas.length;
+                window.currentVmIndex = -1;
+
+                const resp2 = await fetch("/admin/script");
+                window.scripts = await resp2.json();
+
+                showVmData();
+            })();
+
+            (async() => {
+                const resp = await fetch("/admin/statistics");
+                const data = await resp.json();
+
+                document.getElementById("statistic-count").innerText = data.count;
+                document.getElementById("statistic-count-inc").innerText = data.diffCount;
+                document.getElementById("read-count").innerText = data.read;
+                document.getElementById("read-count-inc").innerText = data.diffRead;
+                console.log(data);
+            })()
+
+            setInterval(async function checkRunning(){
+                const resp = await fetch("/admin/running");
+                const runningSpawned = await resp.json();
+
+                function error(x, id){
+                    x.querySelector('[name=running]').classList.add("hide");
+                    x.querySelector('[name=error]').classList.remove("hide");
+
+                    x.querySelector('[name=clear]').classList.remove("hide");
+                    x.querySelector('[name=clear]').addEventListener("click", async e => {
+                        await fetch("/admin/clearSpawned", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json"
+                            },
+                            body: JSON.stringify({
+                                id
+                            })
+                        });
+                        document.getElementById("queue-list").querySelector(`[data-id='${id}']`).remove();
+                    })
+                }
+
+                if (!window.hasOwnProperty("runningSpawned")) {
+                    window.runningSpawned = [];
+                }
+
+                for(const [id, metadata] of Object.entries(runningSpawned)){
+                    if (!window.runningSpawned.includes(id)) {
+                        window.runningSpawned.push(id);
+                        const clone = document.getElementById("queue-object-template").content.cloneNode(true);
+
+                        clone.querySelector("[name='header']").addEventListener("click", async e => {
+                            showDialog(id, `[${metadata.vmid}] ${metadata.script} (${metadata.user})`);
+                        })
+                        clone.querySelector("[name='progress']").setAttribute("data-id", id);
+                        clone.querySelector("[name='header']").innerText = `[${metadata.vmid}] ${metadata.script} (${metadata.user})`;
+
+                        if (metadata.isError) error(clone, id);
+                        document.getElementById("queue-list").appendChild(clone);
+                    }
+                }
+                for(const id of window.runningSpawned){
+                    const target = document.getElementById("queue-list").querySelector(`[data-id='${id}']`);
+                    if (!runningSpawned.hasOwnProperty(id)) {
+                        window.runningSpawned = window.runningSpawned.filter(x => x !== id);
+                        target.remove();
+                    } else {
+                        const metadata = runningSpawned[id];
+                        if (metadata.isError) error(target, id)
+                    }
+                }
+            }, 2000)
+            checkRunning()
+        })
+    </script>
+</head>
+
+<body>
+    <!-- 左側邊欄 -->
+    <div class="ts left vertical fluid inverted visible menu sidebar">
+
+        <!-- 個人資料項目 -->
+        <div class="center aligned item">
+            <img class="ts tiny circular image" id="me-picture">
+            <br>
+            <br>
+            <div id="me-name"></div>
+        </div>
+        <!-- / 個人資料項目 -->
+        <!-- 底部選單 -->
+        <div class="bottom menu">
+            <!-- 登出 -->
+            <a href="/logout" class="item">
+                <i class="sign out icon"></i>
+                登出
+            </a>
+            <!-- / 登出 -->
+        </div>
+        <!-- / 底部選單 -->
+    </div>
+    <!-- / 左側邊欄 -->
+
+    <!-- 可擠壓式的推動容器 -->
+    <div class="squeezable pusher">
+        <!-- / 警告訊息 -->
+
+        <br>
+
+        <!-- 主要容器 -->
+        <div class="ts container">
+            <div class="ts relaxed grid">
+                <!-- 標題欄位 -->
+                <div class="sixteen wide column">
+                    <h3 class="ts header">
+                        儀表板
+                        <div class="sub header">從這裡快速檢視您的網站狀態。</div>
+                    </h3>
+                </div>
+                <!-- / 標題欄位 -->
+
+                <!-- 大略卡片欄位 -->
+                <div class="sixteen wide column">
+                    <div class="ts three cards">
+                        <div class="ts card">
+                            <div class="content">
+                                <!-- 統計數據 -->
+                                <div class="ts left aligned statistic">
+                                    <div class="value">
+                                        <span id="statistic-count"></span>
+                                        <div class="increment" id="statistic-count-inc"></div>
+                                    </div>
+                                    <div class="label">提交數量</div>
+                                </div>
+                                <!-- / 統計數據 -->
+                            </div>
+                            <div class="symbol">
+                                <i class="download icon"></i>
+                            </div>
+                        </div>
+
+                        <div class="ts card">
+                            <div class="content">
+                                <!-- 統計數據 -->
+                                <div class="ts left aligned statistic">
+                                    <div class="value">
+                                        <span id="read-count"></span>
+                                        <div class="increment" id="read-count-inc"></div>
+                                    </div>
+                                    <div class="label">處理數量</div>
+                                </div>
+                                <!-- / 統計數據 -->
+                            </div>
+                            <div class="symbol">
+                                <i class="eye icon"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 區隔線 -->
+                    <div class="ts section divider"></div>
+                    <!-- / 區隔線 -->
+                </div>
+                <!-- / 大略卡片欄位 -->
+
+                <div class="sixteen wide column">
+                    <div class="ts modals dimmer">
+                        <dialog class="ts basic closable modal" id="dialog" open>
+                            <i class="close icon"></i>
+                            <div class="ts icon header">
+                                <i class="file text outline icon"></i> <span name="title"></span>
+                            </div>
+                            <div class="content">
+                                <p name="stdout"></p>
+                                <p class="hide" name="stderr"></p>
+                            </div>
+                            <div class="actions">
+                                <button class="ts inverted basic negative button" id="stderr">標準錯誤</button>
+                                <button class="ts inverted basic positive button" id="stdout">標準輸出</button>
+                            </div>
+                        </dialog>
+                    </div>
+                </div>
+
+                <!-- 左側雜項欄位 -->
+                <div class="sixteen wide column">
+                    <div class="ts top attached info segment">
+                        <div class="ts large header">
+                            最新提交虛擬機器
+                            <span class="ts right floated horizontal label">
+                                <span id="unread-vm-count"></span>
+                                &nbsp;筆未處理
+                            </span>
+                        </div>
+                    </div>
+                    <div class="ts attached segment">
+                        <table class="ts very basic table">
+                            <thead>
+                                <tr>
+                                    <th>VMID</th>
+                                    <th>提交人</th>
+                                    <th>提交時間</th>
+                                    <th>動作</th>
+                                </tr>
+                            </thead>
+                            <template id="submit-vm-template">
+                                <tr name="row">
+                                    <td name="vmid"></td>
+                                    <td name="submitter"></td>
+                                    <td name="time"></td>
+                                    <td>
+                                        <select class="ts basic dropdown" name="scripts"></select>
+                                        <button class="ts button positive basic" name="approve">通過</button>
+                                        <button class="ts button negative basic" name="denial">否決</button>
+                                    </td>
+                                </tr>
+                            </template>
+                            <tbody id="latest-submitted-vm">
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="ts bottom attached right aligned segment">
+                        <div class="ts small basic buttons">
+                            <button class="ts icon button" id="prev-page-vm" disabled>
+                                <i class="left arrow icon"></i>
+                            </button>
+                            <button class="ts icon button" id="next-page-vm" disabled>
+                                <i class="right arrow icon"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="ten wide column">
+                    <div class="ts top attached info segment">
+                        <div class="ts large header">
+                            Log
+                        </div>
+                    </div>
+                    <div class="ts attached segment">
+                        <template id="log-template">
+                            <div class="item">
+                                <div class="content">
+                                    <div class="header" name="title"></div>
+                                    <div class="middoted meta">
+                                        <span name="user"></span>
+                                        <span name="time"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                        <div class="ts items" id="log-container">
+                        </div>
+                    </div>
+                </div>
+                <!-- / 左側雜項欄位 -->
+
+                <!-- 右側雜項欄位 -->
+                <div class="six wide column">
+                    <!-- 系統佇列 -->
+                    <div class="ts top attached info segment">
+                        <div class="ts large header">系統佇列</div>
+                    </div>
+                    <template id="queue-object-template">
+                        <div name="progress">
+                            <button class="ts right floated tiny close button hide" name="clear"></button>
+                            <button class="ts header link button" name="header"></button>
+                            <div class="ts small preparing progress" name="running">
+                                <div class="bar" style="width: 30%"></div>
+                            </div>
+                            <div class="ts small negative progress hide" name="error">
+                                <div class="bar" style="width: 100%"></div>
+                            </div>
+                        </div>
+                    </template>
+                    <div class="ts bottom attached segment" id="queue-list">
+                    </div>
+                    <!-- / 系統佇列 -->
+                </div>
+                <!-- / 右側雜項欄位 -->
+            </div>
+        </div>
+        <!-- / 主要容器 -->
+
+        <br>
+    </div>
+    <!-- / 可擠壓式的推動容器 -->
+</body>
+
+</html>

@@ -3,3 +3,5 @@ sessions
 ca.cer
 data/db.json
 data/config.js
+data/scripts
+data/admin.sqlite3
