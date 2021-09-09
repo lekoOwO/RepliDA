@@ -274,10 +274,10 @@ app.post("/submit", reqLogin, async(req, res) => {
             `<pre>ID:        ${lastInsertRowid}</pre>`,
             `<pre>User:      ${utils.decodeUsername(req.session.username)}</pre>`,
             `<pre>VMID:      ${vmid}</pre>`,
-            `<pre>\n</pre>`,
+            "",
             `<pre>Dump Path: ${dumpPath}</pre>`,
             `<pre>UPID:      ${dumpUpid}</pre>`
-        ].join(""))
+        ].join("\n"))
     }
 })
 
@@ -343,7 +343,7 @@ app.post("/admin/readSubmit", reqAdmin, async(req, res) => {
             "🚫 提交: 否決",
             `<pre>ID:    ${id}</pre>`,
             `<pre>Admin: ${utils.decodeUsername(req.session.username)}</pre>`
-        ].join(""))
+        ].join("\n"))
     }
     res.sendStatus(204);
 })
@@ -366,7 +366,7 @@ app.post("/admin/runScript", reqAdmin, async(req, res) => {
             `<pre>ID:     ${id}</pre>`,
             `<pre>Admin:  ${utils.decodeUsername(req.session.username)}</pre>`,
             `<pre>Script: ${scriptName}</pre>`
-        ].join(""))
+        ].join("\n"))
     }
 
     const {logPath, errPath} = utils.generateLogPath(id);

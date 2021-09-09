@@ -60,7 +60,7 @@
         const VM_DATA_BATCH_SIZE = 5;
         function setSubmitPageButton(index = window.currentVmIndex){
             document.getElementById("prev-page-vm").disabled = index - VM_DATA_BATCH_SIZE < 0;
-            document.getElementById("next-page-vm").disabled = index + VM_DATA_BATCH_SIZE >= window.vmData.length;
+            document.getElementById("next-page-vm").disabled = index + VM_DATA_BATCH_SIZE >= window.vmDatas.length;
         }
 
         function showVmData(isPrev = false, index = window.currentVmIndex + 1) {
@@ -116,7 +116,15 @@
                 })
 
                 clone.querySelector("[name='denial']").addEventListener("click", async e => {
-                    await fetch();
+                    await fetch("/admin/readSubmit", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            id: data.id,
+                        })
+                    });
 
                     postRead();
                 })
@@ -242,7 +250,6 @@
                     }
                 }
             }, 2000);
-            checkRunning();
         })
     </script>
 </head>
