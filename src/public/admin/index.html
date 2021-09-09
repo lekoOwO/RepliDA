@@ -54,17 +54,21 @@
             }
         }
 
-        function showVmData(index = window.currentVmIndex + 1) {
+        const VM_DATA_BATCH_SIZE = 5;
+        function setSubmitPageButton(index = window.currentVmIndex){
+            document.getElementById("prev-page-vm").disabled = index - VM_DATA_BATCH_SIZE < 0;
+            document.getElementById("next-page-vm").disabled = index + VM_DATA_BATCH_SIZE >= window.vmData.length;
+        }
+
+        function showVmData(isPrev = false, index = window.currentVmIndex + 1) {
+            if (isPrev) index -= VM_DATA_BATCH_SIZE;
             if (index < 0) index = 0;
             document.getElementById("latest-submitted-vm").innerHTML = "";
-            document.getElementById("prev-page-vm").disabled = index === 0;
 
-            for(let i = index; i < index + 5; i++){
+            for(let i = index; i < index + VM_DATA_BATCH_SIZE; i++){
                 if (i >= window.vmDatas.length) {
-                    document.getElementById("next-page-vm").disabled = true;
                     break;
                 }
-                document.getElementById("next-page-vm").disabled = false;
                 const data = window.vmDatas[i];
                 const clone = document.getElementById("submit-vm-template").content.cloneNode(true);
                 clone.querySelector("[name='vmid']").innerText = data.vmid;
@@ -87,6 +91,7 @@
                     window.currentVmIndex -= 1;
                     document.getElementById("unread-vm-count").innerText = window.vmDatas.length;
 
+                    setSubmitPageButton();
                     showLogs();
                 }
 
@@ -104,19 +109,21 @@
                         })
                     });
 
-                    postRead()
+                    postRead();
                 })
 
                 clone.querySelector("[name='denial']").addEventListener("click", async e => {
-                    await fetch()
+                    await fetch();
 
-                    postRead()
+                    postRead();
                 })
 
                 document.getElementById("latest-submitted-vm").appendChild(clone);
 
                 window.currentVmIndex = i;
             }
+
+            setSubmitPageButton();
         }
 
         async function showDialog(id, title){
@@ -164,6 +171,9 @@
                 window.scripts = await resp2.json();
 
                 showVmData();
+
+                document.getElementById("prev-page-vm").addEventListener("click", () => showVmData(true));
+                document.getElementById("next-page-vm").addEventListener("click", () => showVmData());
             })();
 
             (async() => {
@@ -174,7 +184,6 @@
                 document.getElementById("statistic-count-inc").innerText = data.diffCount;
                 document.getElementById("read-count").innerText = data.read;
                 document.getElementById("read-count-inc").innerText = data.diffRead;
-                console.log(data);
             })()
 
             setInterval(async function checkRunning(){
@@ -229,8 +238,8 @@
                         if (metadata.isError) error(target, id)
                     }
                 }
-            }, 2000)
-            checkRunning()
+            }, 2000);
+            checkRunning();
         })
     </script>
 </head>
