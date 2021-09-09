@@ -28,6 +28,7 @@ db.exec(`
         "id"	        INTEGER PRIMARY KEY AUTOINCREMENT,
         "user"	        TEXT NOT NULL,
         "action"	    TEXT NOT NULL,
+        "action_data"   TEXT,
         "table"         TEXT NOT NULL,
         "target_id"     INTEGER NOT NULL,
         "time"          DATETIME NOT NULL
@@ -59,16 +60,17 @@ function addError(data) {
 }
 
 function read(table) {
-    return function(id, admin) {
+    return function(id, admin, actionData=null) {
         const insert = db.transaction(() => {
             db.prepare(`UPDATE SUBMITS SET read = 1 WHERE id = ?`).run(id);
             db.prepare(`
-                INSERT INTO ADMIN_LOG (user, action, \`table\`, target_id, time)
-                VALUES (@user, @action, @table, @targetId, @time)
+                INSERT INTO ADMIN_LOG (user, action, action_data, \`table\`, target_id, time)
+                VALUES (@user, @action, @action_data, @table, @targetId, @time)
             `).run({
                 user: admin,
                 action: "read",
                 table,
+                action_data: JSON.stringify(actionData),
                 targetId: id,
                 time: Date.now()
             })

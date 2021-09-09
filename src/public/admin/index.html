@@ -38,7 +38,15 @@
                 const clone = document.getElementById("log-template").content.cloneNode(true);
                 switch(log.action){
                     case "read":
-                    clone.querySelector("[name='title']").innerText = `處理提交 ${log.target_id}`;
+                        const {action, script} = JSON.parse(log.action_data);
+                        switch(action) {
+                            case "approve":
+                                clone.querySelector("[name='title']").innerText = `核准提交 ${log.target_id}`;
+                                clone.querySelector("[name='script']").innerText = script;
+                                clone.querySelector("[name='script']").classList.remove("hide");
+                            case "deny":
+                                clone.querySelector("[name='title']").innerText = `拒絕提交 ${log.target_id}`;
+                        }
                 }
                 clone.querySelector("[name='time']").innerText = new Date(log.time).toISOString();
                 clone.querySelector("[name='user']").innerText = log.user;
@@ -395,6 +403,7 @@
                                     <div class="middoted meta">
                                         <span name="user"></span>
                                         <span name="time"></span>
+                                        <span class="hide" name="script"></span>
                                     </div>
                                 </div>
                             </div>

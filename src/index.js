@@ -322,7 +322,7 @@ app.post("/admin/readSubmit", reqAdmin, async(req, res) => {
     const {id} = req.body;
     const admin = req.session.username;
 
-    dbAdmin.readSubmit(id, admin);
+    dbAdmin.readSubmit(id, admin, {action: "deny"});
     res.sendStatus(204);
 })
 
@@ -336,7 +336,7 @@ app.post("/admin/runScript", reqAdmin, async(req, res) => {
     const script = config.scripts[scriptName];
     const submitData = dbAdmin.getSubmitById(id);
 
-    dbAdmin.readSubmit(id, admin);
+    dbAdmin.readSubmit(id, admin, {action: "approve", script: scriptName});
 
     const {logPath, errPath} = utils.generateLogPath(id);
     runScript.spawn({
