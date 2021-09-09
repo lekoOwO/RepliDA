@@ -9,6 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "axios": "^0.21.4",
     "base62str": "^1.0.9",
     "better-sqlite3": "^7.4.3",
     "dev-null": "^0.1.1",

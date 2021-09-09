@@ -9,6 +9,7 @@ const utils = require('./utils')
 const db = require('./db')
 const dbAdmin = require('./db.admin');
 const runScript = require("./runScript");
+const telegram = require("./notify/telegram")
 
 const session = require('express-session')
 const FileStore = require('session-file-store')(session)
@@ -251,20 +252,33 @@ app.post("/submit", reqLogin, async(req, res) => {
     }
 
     const dumpUpid = await proxmoxApi.dumpVm(config.main.node, vmid);
-    let logs = null;
-    while(!logs) {
+    let dumpPath = null;
+    while(!dumpPath) {
         await utils.sleep(2000);
-        logs = await proxmoxApi.getLog(config.main.node, dumpUpid);
+        const logs = await proxmoxApi.getLog(config.main.node, dumpUpid);
+        dumpPath = utils.getDumpPathFromLog(logs);
     }
-    const dumpPath = utils.getDumpPathFromLog(logs);
 
-    dbAdmin.addSubmit({
+    const {lastInsertRowid} = dbAdmin.addSubmit({
         user: req.session.username,
         vmid,
         vmname,
         dumpPath,
         upid: dumpUpid
     });
+
+    if (config.onSubmit.telegram.enable) {
+        const tg = config.onSubmit.telegram;
+        await telegram.trySendMessage(tg.botToken, tg.chatId, [
+            "新的虛擬機器提交呀喲！",
+            `<pre>ID:        ${lastInsertRowid}</pre>`,
+            `<pre>User:      ${utils.decodeUsername(req.session.username)}</pre>`,
+            `<pre>VMID:      ${vmid}</pre>`,
+            `<pre>\n</pre>`,
+            `<pre>Dump Path: ${dumpPath}</pre>`,
+            `<pre>UPID:      ${dumpUpid}</pre>`
+        ].join(""))
+    }
 })
 
 app.get("/logout", reqLogin, async(req, res) => {
@@ -323,6 +337,14 @@ app.post("/admin/readSubmit", reqAdmin, async(req, res) => {
     const admin = req.session.username;
 
     dbAdmin.readSubmit(id, admin, {action: "deny"});
+    if (config.onRead.telegram.enable) {
+        const tg = config.onRead.telegram;
+        await telegram.trySendMessage(tg.botToken, tg.chatId, [
+            "🚫 提交: 否決",
+            `<pre>ID:    ${id}</pre>`,
+            `<pre>Admin: ${utils.decodeUsername(req.session.username)}</pre>`
+        ].join(""))
+    }
     res.sendStatus(204);
 })
 
@@ -337,6 +359,15 @@ app.post("/admin/runScript", reqAdmin, async(req, res) => {
     const submitData = dbAdmin.getSubmitById(id);
 
     dbAdmin.readSubmit(id, admin, {action: "approve", script: scriptName});
+    if (config.onRead.telegram.enable) {
+        const tg = config.onRead.telegram;
+        await telegram.trySendMessage(tg.botToken, tg.chatId, [
+            "✅ 提交: 核准",
+            `<pre>ID:     ${id}</pre>`,
+            `<pre>Admin:  ${utils.decodeUsername(req.session.username)}</pre>`,
+            `<pre>Script: ${scriptName}</pre>`
+        ].join(""))
+    }
 
     const {logPath, errPath} = utils.generateLogPath(id);
     runScript.spawn({

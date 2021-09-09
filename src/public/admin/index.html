@@ -44,9 +44,12 @@
                                 clone.querySelector("[name='title']").innerText = `核准提交 ${log.target_id}`;
                                 clone.querySelector("[name='script']").innerText = script;
                                 clone.querySelector("[name='script']").classList.remove("hide");
+                                break;
                             case "deny":
                                 clone.querySelector("[name='title']").innerText = `拒絕提交 ${log.target_id}`;
+                                break;
                         }
+                        break;
                 }
                 clone.querySelector("[name='time']").innerText = new Date(log.time).toISOString();
                 clone.querySelector("[name='user']").innerText = log.user;

@@ -1,6 +1,7 @@
 lockfileVersion: 5.3
 
 specifiers:
+  axios: ^0.21.4
   base62str: ^1.0.9
   better-sqlite3: ^7.4.3
   dev-null: ^0.1.1
@@ -14,6 +15,7 @@ specifiers:
   session-file-store: ^1.5.0
 
 dependencies:
+  axios: 0.21.4
   base62str: 1.0.9
   better-sqlite3: 7.4.3
   dev-null: 0.1.1
@@ -80,6 +82,14 @@ packages:
       inherits: 2.0.4
       minimalistic-assert: 1.0.1
       safer-buffer: 2.1.2
+    dev: false
+
+  /axios/0.21.4:
+    resolution: {integrity: sha512-ut5vewkiu8jjGBdqpM44XxjuCjq9LAKeHVmoVfHVzy8eHgxxq8SbAVQNovDA8mVi05kP0Ea/n/UzcSHcTJQfNg==}
+    dependencies:
+      follow-redirects: 1.14.1
+    transitivePeerDependencies:
+      - debug
     dev: false
 
   /bagpipe/0.3.5:
