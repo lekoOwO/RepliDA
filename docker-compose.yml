@@ -1,0 +1,9 @@
+version: '3'
+
+services:
+  replida:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./data:/app/data
