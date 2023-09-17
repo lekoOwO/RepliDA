@@ -1,4 +1,4 @@
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0"
+// process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0"
 
 const config = require("../data/config")
 const { createProxyMiddleware } = require('http-proxy-middleware')
