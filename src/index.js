@@ -49,12 +49,14 @@ app.get("/login", async(req, res) => {
     }
 
     try {
-        const {email, isAdmin, name, picture} = await utils.verifyLogin(token);
-        const username = utils.sanitizeUsername(email);
+        const jwtData = await utils.verifyLogin(token);
+        const username = jwtData.hasOwnProperty("uid")
+            ? jwtData.uid
+            : utils.sanitizeUsername(jwtData.email);
         req.session.username = username;
-        req.session.isAdmin = isAdmin;
-        req.session.name = name;
-        req.session.picture = picture;
+        req.session.isAdmin = jwtData.isAdmin;
+        req.session.name = jwtData.name;
+        req.session.picture = jwtData.picture;
 
         const user = db.getUser(username);
         if (!user) {
@@ -63,7 +65,7 @@ app.get("/login", async(req, res) => {
             await proxmoxApi.addUser(pveUsername, pvePassword);
             await db.setUser(username, pveUsername, pvePassword);
         }
-        res.redirect(isAdmin ? "/admin" : "/");
+        res.redirect(jwtData.isAdmin ? "/admin" : "/");
     } catch (e){
         console.error(e)
         return res.sendStatus(403);
