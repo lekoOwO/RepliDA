@@ -127,8 +127,10 @@ const apiProxy = createProxyMiddleware({
     onProxyReqWs(proxyReq, req, socket, options, head) {
         const token = utils.getTokenFromURL(req.url);
         if (token && !req.session) {
-            const { pveCookie, CSRFPreventionToken } = utils.decJwt(token);
-            req.session = { pveCookie, CSRFPreventionToken };
+            try {
+                const { pveCookie, CSRFPreventionToken } = utils.decJwt(token);
+                req.session = { pveCookie, CSRFPreventionToken };
+            } catch (e) {}
         }
         proxyReq.path = proxyReq.path.split("&token")[0]; // remove token from url, tricky
         setProxyAuth(proxyReq, req);

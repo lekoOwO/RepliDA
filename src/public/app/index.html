@@ -55,7 +55,6 @@
                     })();
                 } else {
                     document.getElementById("navbarNav").classList.add("hide");
-                    await axios.post("/token");
                     document.getElementById("reloadConsole").click();
                 }
             })()
@@ -74,7 +73,8 @@
                 window.location.reload();
             })
 
-            document.getElementById("reloadConsole").addEventListener("click", () => {
+            document.getElementById("reloadConsole").addEventListener("click", async() => {
+                await axios.post("/token");
                 document.getElementById("app").src = (window.isSerial ? "/console/xterm" : "/console/vnc") + `?${Date.now()}`;
             })
         })
